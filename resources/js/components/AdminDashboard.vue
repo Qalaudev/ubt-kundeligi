@@ -98,7 +98,13 @@
                             </div>
                             <div v-if="topic.qr_code_path" class="mt-3 pt-3 border-t">
                                 <p class="text-xs text-gray-600 mb-2">QR Код:</p>
-                                <img :src="`/${topic.qr_code_path}`" alt="QR Code" class="w-20 h-20 mx-auto">
+                                <img 
+                                    :src="`/${topic.qr_code_path}`" 
+                                    alt="QR Code" 
+                                    class="w-20 h-20 mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+                                    @click="showQrModal(topic)"
+                                    style="pointer-events: auto;"
+                                >
                             </div>
                         </div>
                     </div>
@@ -516,14 +522,17 @@ export default {
         async generateQr(topicId) {
             try {
                 const response = await window.axios.post(`/api/topics/${topicId}/generate-qr`);
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'QR Код сәтті жасалды!',
-                    confirmButtonText: 'Дайын',
-                    confirmButtonColor: '#10b981'
-                });
-                this.loadTopics();
+                await this.loadTopics();
+                
+                // Get QR code image URL from response or construct from path
+                const qrImageUrl = response.data.qr_code_url || `/${response.data.qr_code_path}`;
+                
+                // Find topic to get title
+                const topic = this.topics.find(t => t.id === parseInt(topicId));
+                await this.showQrModal({ 
+                    qr_code_path: response.data.qr_code_path, 
+                    title: 'QR Код Сәтті Жасалды!' 
+                }, qrImageUrl);
             } catch (error) {
                 console.error('Error generating QR:', error);
                 await Swal.fire({
@@ -533,6 +542,33 @@ export default {
                     confirmButtonColor: '#ef4444'
                 });
             }
+        },
+        async showQrModal(topic, qrImageUrl = null) {
+            const imageUrl = qrImageUrl || (topic.qr_code_path ? `/${topic.qr_code_path}` : '');
+            const title = topic.title || 'QR Код';
+            
+            if (!imageUrl) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Қате',
+                    text: 'QR код табылмады',
+                    confirmButtonColor: '#ef4444'
+                });
+                return;
+            }
+            
+            await Swal.fire({
+                title: title,
+                html: `
+                    <div style="text-align: center;">
+                        <img src="${imageUrl}" alt="QR Code" style="max-width: 300px; height: auto; border: 2px solid #ddd; padding: 10px; background: white; display: block; margin: 0 auto;">
+                        <p style="margin-top: 15px; color: #666;">QR кодты сканерлеу арқылы тестке кіре аласыз</p>
+                    </div>
+                `,
+                confirmButtonText: 'Дайын',
+                confirmButtonColor: '#10b981',
+                width: '400px'
+            });
         },
         addAnswer() {
             this.newQuestion.answers.push({ answer_text: '', is_correct: false });
