@@ -88,10 +88,11 @@ class TopicController extends Controller
     /**
      * Generate QR code for a topic.
      */
-    public function generateQr(string $id): JsonResponse
+    public function generateQr(Request $request, string $id): JsonResponse
     {
         $topic = Topic::findOrFail($id);
-        $baseUrl = config('app.url');
+        // Use the actual domain from the request instead of config
+        $baseUrl = $request->getSchemeAndHttpHost();
         $qrPath = $this->qrCodeService->generateForTopic($topic->id, $baseUrl);
 
         $topic->update(['qr_code_path' => $qrPath]);
